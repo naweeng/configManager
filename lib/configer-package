@@ -5,7 +5,7 @@
 Usage()
 {
     printf "%b" "Check your arguments.\n\n"
-    printf "%b" "Usage: configer package -s state(default:install; install/remove) -p package_name -v version_no\n" >&2
+    printf "%b" "Usage: configer package -u user_name -p password -s state(default:install; install/remove) -p package_name -v version_no\n" >&2
 }
 
 check_if_package()
@@ -13,7 +13,7 @@ check_if_package()
     dst_ip=$1
     pkg_name=$2
     pkg_version=$3
-    curr_package_version=$(sshpass -p $password ssh $user@$dst_ip -p 2222 "apt-cache policy $pkg_name | grep Installed | awk '{print \$2}'")
+    curr_package_version=$(sshpass -p $password ssh $user@$dst_ip "apt-cache policy $pkg_name | grep Installed | awk '{print \$2}'")
     if [ $curr_package_version != $pkg_version ];
     then
         pkg_installed='yes'
@@ -35,7 +35,7 @@ install_package()
         check_if_package $i $pkg_name $pkg_version
         if [ $pkg_installed = 'yes' ];
         then
-            sshpass -p $password ssh $user@$i -p 2222 "apt-get -y install $pkg_name=$pkg_version"
+            sshpass -p $password ssh $user@$i "apt-get -y install $pkg_name=$pkg_version"
             if [ $? == 0 ];
             then
                 printf "\nPackage Install State: Changed\n\n"
@@ -57,7 +57,7 @@ remove_package()
         printf "Removing package: $pkg_name on IP: $i\n"
         check_if_package $i $pkg_name $none_package_version
         if [ $pkg_installed = 'yes' ]; then
-            sshpass -p $password ssh $user@$i -p 2222 "apt-get -y purge $pkg_name"
+            sshpass -p $password ssh $user@$i "apt-get -y purge $pkg_name"
             if [ $? = 0 ];
             then
                 printf "\nPackage Remove State: Changed\n\n"
@@ -113,9 +113,9 @@ else
     then
         for i in $(echo $target_hosts | sed "s/,/ /g")
         do
-            sshpass -p $password scp -P2222 ${WORK_DIR}/bootstrap.sh $user@$i:/root/bootstrap.sh
+            sshpass -p $password scp ${WORK_DIR}/bootstrap.sh $user@$i:/root/bootstrap.sh
             sleep 5
-            sshpass -p $password ssh -p 2222 $user@$i 'chmod +x /root/bootstrap.sh && sh /root/bootstrap.sh'
+            sshpass -p $password ssh $user@$i 'chmod +x /root/bootstrap.sh && sh /root/bootstrap.sh'
         done
     fi
     install_package $target_hosts $package_name $version_no

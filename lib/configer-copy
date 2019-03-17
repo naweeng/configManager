@@ -1,18 +1,16 @@
 #!/bin/bash
 
-# password='foobarbaz'
-
 Usage()
 {
     printf "Incorrect arguments\n\n"
-    printf "%b" "Usage: configer copy -s source_file -d destination_file -o file_owner -g file_group -p file_perm -t target_hosts -n service_name\n" >&2
+    printf "%b" "Usage: configer copy -u user_name -p password -s source_file -d destination_file -o file_owner -g file_group -p file_perm -t target_hosts -n service_name\n" >&2
 }
 
 fetch_file_details()
 {
     file=$1
     dst_ip=$2
-    file_detail=$(sshpass -p $password ssh root@$dst_ip -p 2222 "stat -c '%U %G %a' $file && cksum $file")
+    file_detail=$(sshpass -p $password ssh root@$dst_ip "stat -c '%U %G %a' $file && cksum $file")
     req_file_detail=$(echo $file_detail | awk '{ print $1,$2,$3,$4}')
 }
 
@@ -29,7 +27,7 @@ file_copy()
     for i in $(echo $target_hosts | sed "s/,/ /g")
     do
         printf "Copying file:$source_file to path:$destination_file on IP: $i\n\n"
-        sshpass -p $password ssh $user@$i -p 2222 "stat $destination_file"
+        sshpass -p $password ssh $user@$i "stat $destination_file"
         file_exists=$?
         if [ $file_exists -eq 0 ]
         then
@@ -40,27 +38,27 @@ file_copy()
             cur_cksum=$(echo $req_file_detail | awk '{print $4}')
             if [ $cur_cksum != $(cksum $source_file | awk '{print $1}') ]
             then
-                scp -P 2222 $source_file $user@$i:$destination_file
+                sshpass -p $password scp $source_file $user@$i:$destination_file
                 content_state='changed'
             else
                 content_state='ok'
             fi
             if [[ $cur_owner != $file_owner ]] || [[ $cur_group != $file_group ]]
             then
-                sshpass -p $password ssh $user@$i -p 2222 "chown $file_owner:$file_group $destination_file"
+                sshpass -p $password ssh $user@$i "chown $file_owner:$file_group $destination_file"
                 owner_state='changed'
             else
                 owner_state='ok'
             fi
             if [ $cur_perm != $file_perm ]
             then
-                sshpass -p $password ssh $user@$i -p 2222 "chmod $file_perm $destination_file"
+                sshpass -p $password ssh $user@$i "chmod $file_perm $destination_file"
                 perm_state='changed'
             else
                 perm_state='ok'
             fi
         else
-            scp -P 2222 $source_file $user@$i:$destination_file
+            sshpass -p $password scp $source_file $user@$i:$destination_file
             if [ $? -eq 0 ];
             then
                 overall_state='changed'
@@ -70,7 +68,8 @@ file_copy()
         if [[ $overall_state = 'changed' ]] || [[ $perm_state = 'changed' ]] || [[ $owner_state = 'changed' ]] || [[ $content_state = 'changed' ]];
         then
             printf "\nFile Copy State: Changed\n\n"
-            sshpass -p $password ssh $user@$i -p 2222 "service $service_name restart"
+            printf "\n Restarting $service_name ......"
+            sshpass -p $password ssh $user@$i "service $service_name restart"
         elif [[ $overall_state = 'ok' ]] || [[ $perm_state = 'ok' ]] || [[ $owner_state = 'ok' ]] || [[ $content_state = 'ok' ]];
         then
             printf "\nFile Copy State: OK\n\n"
@@ -82,7 +81,7 @@ file_copy()
 
 
 #Inputs
-while getopts ":u:p:s:d:o:g:c:t:n" opt;
+while getopts ":u:p:s:d:o:g:c:t:n:" opt;
 do
     case ${opt} in
       u)
@@ -130,7 +129,4 @@ fi
 
 
 # Main invocation
-
-echo "${WORK_DIR}"
-
-# file_copy $work_dir$source_file $destination_file $file_owner $file_group $file_perm $target_hosts $service_name
+file_copy $work_dir$source_file $destination_file $file_owner $file_group $file_perm $target_hosts $service_name
