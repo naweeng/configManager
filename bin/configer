@@ -1,0 +1,20 @@
+#!/bin/bash
+
+
+
+path_to_configer=$(which configer)
+curr_dir=$(dirname "$path_to_configer")
+work_dir=$(pwd)
+export WORK_DIR=${work_dir}
+command=${1:-help}
+shift
+
+command_file="$curr_dir"/../lib/configer-$command
+
+if ! [[ -x $command_file ]]; then
+  echo "\"configer $command\" is not a subcommand. Run \"configer help\" for more information."
+  exit 1
+fi
+
+# echo $work_dir
+exec "$command_file" "$@"

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+root_dir=$(configer root-dir)
+find "$root_dir"/lib -name "configer-*" | cut -f2- -d'-'
